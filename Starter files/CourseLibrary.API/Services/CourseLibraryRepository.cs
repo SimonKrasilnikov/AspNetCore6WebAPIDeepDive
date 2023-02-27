@@ -1,5 +1,6 @@
 ﻿using CourseLibrary.API.DbContexts;
-using CourseLibrary.API.Entities; 
+using CourseLibrary.API.Entities;
+using CourseLibrary.API.ResourceParameters;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourseLibrary.API.Services;
@@ -126,6 +127,39 @@ public class CourseLibraryRepository : ICourseLibraryRepository
         return await _context.Authors.ToListAsync();
     }
 
+    public async Task<IEnumerable<Author>> GetAuthorsAsync(
+        AuthorsResourceParameters authorsResourceParameters)
+    {
+        if (authorsResourceParameters == null)
+        {
+            throw new ArgumentException(nameof(authorsResourceParameters));
+        }
+        
+        if (string.IsNullOrWhiteSpace(authorsResourceParameters.MainCategory)
+            && string.IsNullOrWhiteSpace(authorsResourceParameters.SearchQuery)) {
+            return await GetAuthorsAsync();
+        }
+
+        // collection to start from
+        var collection = _context.Authors as IQueryable<Author>;
+
+        if (!string.IsNullOrWhiteSpace(authorsResourceParameters.MainCategory))
+        {
+            authorsResourceParameters.MainCategory = authorsResourceParameters.MainCategory.Trim();
+            collection = collection.Where(a => a.MainCategory == authorsResourceParameters.MainCategory);
+        }
+
+        if (!string.IsNullOrWhiteSpace(authorsResourceParameters.SearchQuery))
+        {
+            authorsResourceParameters.SearchQuery = authorsResourceParameters.SearchQuery.Trim();
+            collection = collection.Where(a => a.MainCategory.Contains(authorsResourceParameters.SearchQuery)
+            || a.FirstName.Contains(authorsResourceParameters.SearchQuery)
+            || a.LastName.Contains(authorsResourceParameters.SearchQuery));
+        }
+
+        return await collection.ToListAsync();
+    }
+
     public async Task<IEnumerable<Author>> GetAuthorsAsync(IEnumerable<Guid> authorIds)
     {
         if (authorIds == null)
@@ -148,5 +182,6 @@ public class CourseLibraryRepository : ICourseLibraryRepository
     {
         return (await _context.SaveChangesAsync() >= 0);
     }
+
 }
 
